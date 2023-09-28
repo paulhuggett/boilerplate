@@ -1,0 +1,2 @@
+Distributed under the MIT License.
+SPDX-License-Identifier: MIT
