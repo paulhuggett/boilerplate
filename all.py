@@ -15,7 +15,7 @@
 #
 # ===----------------------------------------------------------------------===//
 """
-A simple utility which applies standard "boilerplate" to an entire directory tree of files. Only files whose
+A simple utility which applies a standard "boilerplate" to an entire directory tree of files. Only files whose
 names match on of a set of globbing patterns will be modified.
 """
 
@@ -45,17 +45,8 @@ def main():
     ]
 
     # The collection of directories into which this utility will not descend.
-    exclude_dirs = frozenset(itertools.chain([
-        '.git',
-        '3rd_party',
-        'lit',
-        'node_modules'
-    ], glob.iglob('build_*')))
-    exclude_files = frozenset([
-        'fnv.hpp',
-        'fnv.cpp',
-        'test_fnv.cpp'
-    ])
+    exclude_dirs = frozenset(itertools.chain(['.git', 'node_modules'], glob.iglob('build_*')))
+    exclude_files = frozenset([])
 
     all_paths = []
     for root, dirs, files in os.walk(base_path, topdown=True):

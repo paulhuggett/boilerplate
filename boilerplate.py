@@ -17,45 +17,18 @@
 
 """
  A small utility tool to stamp boilerplate text onto source files. It uses
- an external tool "FIGlet" (www.figlet.org) to generate banner text (although
- this can be disabled).
+ the pyfiglet library to generate banner text (although this can be disabled).
 """
 
-from __future__ import print_function
-
+from typing import Optional
 import argparse
 import os.path
 import re
 import subprocess
 import sys
 
-license_text = \
-'''
-Distributed under the MIT License.
-See https://github.com/paulhuggett/uri/blob/main/LICENSE.TXT
-for license information.
-SPDX-License-Identifier: MIT
-'''
-#'''
-#Distributed under the Apache License v2.0.
-#See https://github.com/paulhuggett/peejay/blob/main/LICENSE.TXT
-#for license information.
-#SPDX-License-Identifier: Apache-2.0
-#'''
-
-#'''
-#Part of the pstore project, under the Apache License v2.0 with LLVM Exceptions.
-#See https://github.com/paulhuggett/pstore/blob/master/LICENSE.txt for license
-#information.
-#SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-#'''
-#license_text = \
-#'''
-#Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-#See https://llvm.org/LICENSE.txt for license information.
-#SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-#'''
-
+# 3rd party
+import pyfiglet
 
 def strip_lines(lines, index, comment_str):
     """Removes leading and trailing comment lines from the file."""
@@ -88,20 +61,20 @@ def strip_leading_and_trailing_lines(lines, comment):
     return strip_lines(strip_lines(lines, 0, comment), -1, comment)
 
 
-def remove_string_prefix(s, prefix):
+def remove_string_prefix(s:str, prefix:str) -> str:
     if s.startswith(prefix):
         s = s[len(prefix):]
     return s
 
 
-def remove_string_suffix(s, suffix):
+def remove_string_suffix(s:str, suffix:str) -> str:
     if s.endswith(suffix):
         s = s[:-len(suffix)]
     return s
 
 
-def split_extension(path):
-    """A wrapped around splitext() which will delete a '.in' extension. This convention is used for files
+def split_extension(path:str) -> tuple[str,str]:
+    """A wrapper around splitext() which will delete a '.in' extension. This convention is used for files
     being fed as the template file to cmake's configure_file() command; the resulting file has the same
     name but without the .in part."""
 
@@ -111,11 +84,11 @@ def split_extension(path):
     return result
 
 
-def tu_name_from_path(path):
+def tu_name_from_path(path:str) -> str:
     bn = os.path.basename(path)
     name = split_extension(bn)[0]
-    name = remove_string_prefix(name, 'test_') # pstore-style snake_case
-    name = remove_string_prefix(name, 'Test') # LLVM-style CamelCase.
+    name = remove_string_prefix(name, 'test_') # snake_case
+    name = remove_string_prefix(name, 'Test') # CamelCase.
     name = remove_string_suffix(name, '_win32')
     name = remove_string_suffix(name, '_posix')
 
@@ -127,14 +100,9 @@ def tu_name_from_path(path):
     return name.replace('_', ' ')
 
 
-def figlet(name, comment_char):
-    command = 'figlet "' + name + '"'
-    if sys.version_info[0] >= 3:
-        out = subprocess.getoutput(command)
-    else:
-        out = subprocess.check_output(command, shell=True)
-    comments = [comment_char + '* ' + l + ' *' + '\n' for l in out.splitlines(False)]
-    return comments
+def figlet(name:str, comment_char:str) -> list[str]:
+    out = pyfiglet.figlet_format(name)
+    return [comment_char + '* ' + l + ' *' + '\n' for l in out.splitlines(False)]
 
 
 LANGUAGE_MAPPING = {
@@ -143,7 +111,7 @@ LANGUAGE_MAPPING = {
 }
 
 
-def get_path_line(path, comment_char):
+def get_path_line(path:str, comment_char:str) -> list[str]:
     path_line_suffix = '===//'
 
     (_, ext) = split_extension(path)
@@ -156,10 +124,9 @@ def get_path_line(path, comment_char):
     return [path_line + '\n']
 
 
-def get_license(comment_char):
-    license = [comment_char + ' ' + l for l in (license_text + '\n').splitlines(False)]
-    license = [l.rstrip(' ') + '\n' for l in license]
-    return license
+def get_license(comment_char:str, license_text:list[str]) -> list[str]:
+    out_lines = [comment_char + ' ' + l for l in license_text]
+    return [l.rstrip(' ') for l in out_lines]
 
 
 COMMENT_MAPPING = {
@@ -175,7 +142,8 @@ COMMENT_MAPPING = {
 }
 
 
-def boilerplate(path, base_path, comment_char=None, figlet_enabled=True):
+def boilerplate(path:str, base_path:str, license_text:list[str], 
+                comment_char:Optional[str]=None, figlet_enabled:bool=True) -> list[str]:
     path = os.path.abspath(path)
     base_path = os.path.abspath(base_path)
 
@@ -194,14 +162,15 @@ def boilerplate(path, base_path, comment_char=None, figlet_enabled=True):
 
     subpath = path[len(base_path):]
 
-    # pstore files that are input to CMake's configure_files() end with '.in'. Remove it.
+    # files that are input to CMake's configure_files() sometimes end with 
+    # '.in'. Remove them.
     if subpath.endswith('.in'):
         subpath = subpath[:-len('.in')]
 
     with open(path) as f:
         lines = f.readlines()
 
-    shebang = lines[0] if len(lines) > 0 and lines[0][:2] == '#!' else None
+    shebang = lines[0] if len(lines) > 0 and lines[0].startswith ('#!') else None
     if shebang is not None:
         del lines[0]
 
@@ -220,13 +189,31 @@ def boilerplate(path, base_path, comment_char=None, figlet_enabled=True):
         prolog += figlet(tu_name, comment_char)
         prolog += [ line_of_dashes ]
 
-    prolog += get_license(comment_char)
+    prolog += get_license(comment_char, license_text)
     prolog += [ line_of_dashes ]
     return prolog + lines
 
 
-def boilerplate_out(path, base_path, comment_char=None, inplace=False, figlet_enabled=True):
-    lines = boilerplate(path, base_path, comment_char, figlet_enabled)
+def find_boilerplate ():
+    # Start in the current directory and work up the tree from there.
+    path = os.getcwd()
+    while True:
+        try:
+            return open(os.path.join (path, ".boilerplate.txt"))
+        except IOError:
+            # Try again with the parent directory if there is one.
+            newpath = os.path.abspath (os.path.join (path, os.path.pardir))
+            if path == newpath:
+                # We reached the top of the directory tree.
+                raise
+            path = newpath
+
+
+def boilerplate_out(path:str, base_path:str, comment_char:Optional[str]=None, inplace:bool=False, figlet_enabled:bool=True) -> None:
+    with find_boilerplate () as f:
+        license_text = f.readlines() if f is not None else ["license text"]
+
+    lines = boilerplate(path, base_path, license_text, comment_char, figlet_enabled)
     outfile = open(path, 'w') if inplace else sys.stdout
     for l in lines:
         print(l, end='', file=outfile)
