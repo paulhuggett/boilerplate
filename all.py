@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ===- utils/boilerplate/all.py -------------------------------------------===//
+# ===- all.py -------------------------------------------------------------===//
 # *        _ _  *
 # *   __ _| | | *
 # *  / _` | | | *
@@ -7,12 +7,8 @@
 # *  \__,_|_|_| *
 # *             *
 # ===----------------------------------------------------------------------===//
-#
-#  Part of the pstore project, under the Apache License v2.0 with LLVM Exceptions.
-#  See https://github.com/paulhuggett/pstore/blob/master/LICENSE.txt for license
-#  information.
-#  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-#
+#  Distributed under the MIT License.
+#  SPDX-License-Identifier: MIT
 # ===----------------------------------------------------------------------===//
 """
 A simple utility which applies a standard "boilerplate" to an entire directory tree of files. Only files whose
