@@ -16,7 +16,7 @@
  the pyfiglet library to generate banner text (although this can be disabled).
 """
 
-from typing import Optional
+from typing import Optional, IO
 import argparse
 import os.path
 import re
@@ -54,22 +54,22 @@ def strip_leading_and_trailing_lines(lines, comment):
     return strip_lines(strip_lines(lines, 0, comment), -1, comment)
 
 
-def remove_string_prefix(s:str, prefix:str) -> str:
+def remove_string_prefix(name:str, prefix:str) -> str:
     """
-    If the string s starts with the supplied prefix, it is removed otherwise the string is
+    If the string 'name' starts with the supplied prefix, it is removed otherwise the string is
     returned unaltered.
     """
 
-    return s[len(prefix):] if s.startswith(prefix) else s
+    return name[len(prefix):] if name.startswith(prefix) else name
 
 
-def remove_string_suffix(s:str, suffix:str) -> str:
+def remove_string_suffix(name:str, suffix:str) -> str:
     """
-    If the string s ends with the supplied suffix, it is removed otherwise the string is
+    If the string 'name' ends with the supplied suffix, it is removed otherwise the string is
     returned unaltered.
     """
 
-    return s[:-len(suffix)] if s.endswith(suffix) else s
+    return name[:-len(suffix)] if name.endswith(suffix) else name
 
 
 def split_extension(path:str) -> tuple[str,str]:
@@ -104,9 +104,13 @@ def tu_name_from_path(path:str) -> str:
     return name.replace('_', ' ')
 
 
-def figlet(name:str, comment_char:str) -> list[str]:
+def figlet(name:str, comment:str) -> list[str]:
+    """
+    Uses figlet to generate a text banner from 'name'. Each line is has the comment prefix added.
+    """
+
     out = pyfiglet.figlet_format(name)
-    return [comment_char + '* ' + l + ' *' + '\n' for l in out.splitlines(False)]
+    return [comment + '* ' + l + ' *' + '\n' for l in out.splitlines(False)]
 
 
 LANGUAGE_MAPPING = {
@@ -116,6 +120,11 @@ LANGUAGE_MAPPING = {
 
 
 def get_path_line(path:str, comment_char:str) -> list[str]:
+    """
+    Builds and returns the "path line". This contains the path to the file and a mode statement when
+    necessary.
+    """
+
     path_line_suffix = '===//'
 
     (_, ext) = split_extension(path)
@@ -129,6 +138,10 @@ def get_path_line(path:str, comment_char:str) -> list[str]:
 
 
 def get_license(comment_char:str, license_text:list[str]) -> list[str]:
+    """
+    Returns the commented license text.
+    """
+
     out_lines = [comment_char + ' ' + l for l in license_text]
     return [l.rstrip(' ') for l in out_lines]
 
@@ -148,6 +161,10 @@ COMMENT_MAPPING = {
 
 def boilerplate(path:str, base_path:str, license_text:list[str],
                 comment_char:Optional[str]=None, figlet_enabled:bool=True) -> list[str]:
+    """
+    Builds the output file including its boilerplate header.
+    """
+
     path = os.path.abspath(path)
     base_path = os.path.abspath(base_path)
 
@@ -219,18 +236,38 @@ def find_boilerplate ():
             path = newpath
 
 
-def boilerplate_out(path:str, base_path:str, comment_char:Optional[str]=None,
-                    inplace:bool=False, figlet_enabled:bool=True) -> None:
-    with find_boilerplate () as bp_file:
-        license_text = bp_file.readlines() if bp_file is not None else ["license text"]
+def write_lines (outfile:IO[str], lines:list[str]) -> None:
+    """
+    Writes an array of lines to an output file.
+    """
 
-    lines = boilerplate(path, base_path, license_text, comment_char, figlet_enabled)
-    outfile = open(path, mode='w', encoding='utf8') if inplace else sys.stdout
     for line in lines:
         print(line, end='', file=outfile)
 
 
+def boilerplate_out(path:str, base_path:str, comment_char:Optional[str]=None,
+                    inplace:bool=False, figlet_enabled:bool=True) -> None:
+    """
+    Finds and reads the boilerplate template file. Builds the final output and writes it
+    to the selected output file.
+    """
+
+    with find_boilerplate () as bp_file:
+        license_text = bp_file.readlines() if bp_file is not None else ["license text"]
+
+    lines = boilerplate(path, base_path, license_text, comment_char, figlet_enabled)
+    if inplace:
+        with open(path, mode="w", encoding="utf8") as outfile:
+            write_lines (outfile, lines)
+    else:
+        write_lines (sys.stdout, lines)
+
+
 def main(args=sys.argv[1:]):
+    """
+    Utility entry point.
+    """
+
     parser = argparse.ArgumentParser(description='Generate source file license boilerplate')
     parser.add_argument('source_file', help='The source file to be processed')
     parser.add_argument('--base-path', help='The base path to which path names are relative',

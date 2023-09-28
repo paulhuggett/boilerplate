@@ -11,8 +11,8 @@
 #  SPDX-License-Identifier: MIT
 # ===----------------------------------------------------------------------===//
 """
-A simple utility which applies a standard "boilerplate" to an entire directory tree of files. Only files whose
-names match on of a set of globbing patterns will be modified.
+A simple utility which applies a standard "boilerplate" to an entire directory tree of files. Only
+files whose names match one of a set of globbing patterns will be modified.
 """
 
 from __future__ import print_function
@@ -27,6 +27,11 @@ import boilerplate
 
 
 def main():
+    """
+    Applies a standard "boilerplate" to an entire directory tree of files. Only files whose names
+    match one of a set of globbing patterns will be modified.
+    """
+
     base_path = os.getcwd()
     patterns = [
         '*.cmake',
