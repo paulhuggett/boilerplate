@@ -47,14 +47,24 @@ def main():
 
     # The collection of directories into which this utility will not descend.
     exclude_dirs = frozenset(itertools.chain(['.git', 'node_modules'], glob.iglob('build_*')))
-    exclude_files = frozenset([])
+    try:
+        with open('.boilerplateignore', encoding='utf-8') as ignore_file:
+            exclude_files = frozenset(ignore_file.read().splitlines())
+    except (OSError, IOError):
+        exclude_files = frozenset([])
 
     all_paths = []
     for root, dirs, files in os.walk(base_path, topdown=True):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
         for pattern in patterns:
-            all_paths += [os.path.join(root, file_name) for file_name in files if
-                          fnmatch.fnmatch(file_name, pattern) and file_name not in exclude_files]
+            for file_name in files:
+                path = os.path.relpath(os.path.join(root, file_name))
+                if path in exclude_files:
+                    #print ('skipping', path)
+                    pass
+                elif fnmatch.fnmatch(file_name, pattern):
+                    #print ('adding', path)
+                    all_paths += [path]
 
     for path in all_paths:
         boilerplate.boilerplate_out(path=path, base_path=base_path, inplace=True)
